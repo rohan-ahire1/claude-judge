@@ -8,6 +8,7 @@ from pathlib import Path
 
 from claude_judge.aggregator import aggregate
 from claude_judge.claude_cli_backend import CallCapExceeded, ClaudeCLIBackend
+from claude_judge.config import load_config
 from claude_judge.git_correlator import GitCorrelator, GitWindow
 from claude_judge.intent_classifier import IntentClassifier
 from claude_judge.llm_scorers import (
@@ -114,17 +115,111 @@ def _format_session(
     return "\n".join(lines)
 
 
+def _run_zinger(
+    sessions: list[SessionStats],
+    min_tools: int,
+    tier_b: list,
+    classifier: IntentClassifier | None,
+) -> int:
+    """Emit one line to stderr for the chronologically-latest non-trivial session.
+
+    Used by the stop hook. Deterministic path when --no-llm so hook latency stays
+    sub-second; otherwise uses cached verdict if one exists, else fallback.
+    """
+    import sys
+    candidates = [s for s in sessions if s.tool_call_count >= min_tools]
+    if not candidates:
+        return 0
+    latest = max(candidates, key=lambda s: s.started_at)
+    git = _correlate_git(latest)
+    intent = "unknown"
+    if classifier is not None:
+        try:
+            intent = classifier.classify(latest)
+        except CallCapExceeded:
+            pass
+    scores = _score_session(latest, git, intent, tier_b)
+    overall = aggregate(scores)
+    if overall is None or not scores:
+        return 0
+    weakest = min(scores, key=lambda r: r.score)
+    short = (latest.session_id.split("#", 1)[0] or "unknown")[:8]
+    print(
+        f"judge[{short}] {overall.overall:.0f}/100 — weakest: {weakest.name} "
+        f"{weakest.score:.1f} ({weakest.rationale[:80]})",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def _run_brief(
+    sessions: list[SessionStats],
+    min_tools: int,
+    tier_b: list,
+    classifier: IntentClassifier | None,
+) -> int:
+    """Pre-commit hook output: 3 focused lines to stderr."""
+    import sys
+    candidates = [s for s in sessions if s.tool_call_count >= min_tools]
+    if not candidates:
+        return 0
+    latest = max(candidates, key=lambda s: s.started_at)
+    git = _correlate_git(latest)
+    intent = "unknown"
+    if classifier is not None:
+        try:
+            intent = classifier.classify(latest)
+        except CallCapExceeded:
+            pass
+    scores = _score_session(latest, git, intent, tier_b)
+    overall = aggregate(scores)
+    if overall is None or not scores:
+        return 0
+    short = (latest.session_id.split("#", 1)[0] or "unknown")[:8]
+    weakest_two = sorted(scores, key=lambda r: r.score)[:2]
+    print(
+        f"judge[{short}] overall={overall.overall:.0f}/100  intent={intent}",
+        file=sys.stderr,
+    )
+    for r in weakest_two:
+        print(f"  ↳ {r.name} {r.score:.1f}: {r.rationale[:80]}", file=sys.stderr)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="judge")
     parser.add_argument("--root", type=Path, default=_default_projects_root())
     parser.add_argument("--cwd", type=Path, default=Path.cwd())
     parser.add_argument("--output", type=Path, default=_default_output_dir())
-    parser.add_argument("--tone", choices=("roast", "coach"), default="roast")
+    parser.add_argument("--tone", choices=("roast", "coach"), default=None)
     parser.add_argument("--no-llm", action="store_true")
     parser.add_argument("--no-verdict", action="store_true")
     parser.add_argument("--all", action="store_true")
+    parser.add_argument(
+        "--session-id",
+        default=None,
+        help="Only judge sessions whose raw session ID matches this prefix",
+    )
+    parser.add_argument(
+        "--zinger",
+        action="store_true",
+        help="Emit only a 1-line zinger for the latest matching non-trivial session (for stop hook)",
+    )
+    parser.add_argument(
+        "--brief",
+        action="store_true",
+        help="Emit a 3-line focused callout for the latest matching session (for pre-commit hook)",
+    )
+    parser.add_argument(
+        "--zinger-min-tools",
+        type=int,
+        default=10,
+        help="Minimum tool calls for --zinger/--brief to emit (otherwise exits silently)",
+    )
     args = parser.parse_args(argv)
 
+    cfg = load_config(args.output / "config.toml")
+    tone = args.tone or cfg.tone
     cache_dir = args.output / "cache"
     scan_root = args.root if args.all else _project_dir_for_cwd(args.root, args.cwd)
     source = ClaudeCodeJSONLSource(root=scan_root)
@@ -133,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
     tier_b: list = []
     writer: VerdictWriter | None = None
     if not args.no_llm:
-        backend = ClaudeCLIBackend(cache_dir=cache_dir)
+        backend = ClaudeCLIBackend(cache_dir=cache_dir, daily_cap=cfg.daily_llm_cap)
         classifier = IntentClassifier(backend=backend, cache_dir=cache_dir)
         tier_b = [
             LeverageFitScorer(backend=backend, cache_dir=cache_dir),
@@ -141,13 +236,23 @@ def main(argv: list[str] | None = None) -> int:
             PromptQualityScorer(backend=backend, cache_dir=cache_dir),
         ]
         if not args.no_verdict:
-            writer = VerdictWriter(backend=backend, cache_dir=cache_dir, tone=args.tone)
+            writer = VerdictWriter(backend=backend, cache_dir=cache_dir, tone=tone)
 
     store = OutputStore(root=args.output)
 
+    sessions_iter = source.list_sessions()
+    if args.session_id:
+        prefix = args.session_id
+        sessions_iter = (s for s in sessions_iter if s.session_id.startswith(prefix))
+
+    if args.zinger:
+        return _run_zinger(list(sessions_iter), args.zinger_min_tools, tier_b, classifier)
+    if args.brief:
+        return _run_brief(list(sessions_iter), args.zinger_min_tools, tier_b, classifier)
+
     any_printed = False
     llm_disabled_reason: str | None = None
-    for session in source.list_sessions():
+    for session in sessions_iter:
         git = _correlate_git(session)
         if classifier is None or session.tool_call_count < 5 or llm_disabled_reason is not None:
             intent = "unknown"
