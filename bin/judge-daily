@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Build today's daily digest. Meant to be invoked by cron at end-of-day.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(dirname "$SCRIPT_DIR")"
+VENV_PY="$ROOT/.venv/bin/python"
+
+if [[ ! -x "$VENV_PY" ]]; then
+  echo "claude-judge: venv not found at $VENV_PY" >&2
+  exit 1
+fi
+
+TODAY="${1:-$(date -u +%Y-%m-%d)}"
+OUTPUT_DIR="${CLAUDE_JUDGE_DATA:-$HOME/Documents/projects/claude-judge/data}"
+
+DIGEST_PATH=$("$VENV_PY" -c "
+from pathlib import Path
+from claude_judge.digest import build_daily_digest
+from claude_judge.claude_cli_backend import ClaudeCLIBackend
+
+root = Path('$OUTPUT_DIR')
+llm = ClaudeCLIBackend(cache_dir=root / 'cache')
+digest = build_daily_digest(root, date='$TODAY', llm=llm)
+if digest:
+    print(digest.markdown_path)
+")
+
+if [[ -n "$DIGEST_PATH" ]]; then
+  # macOS desktop notification (no-op on other OSes)
+  if command -v osascript >/dev/null 2>&1; then
+    osascript -e "display notification \"Daily digest written: $TODAY\" with title \"claude-judge\"" || true
+  fi
+  echo "daily digest: $DIGEST_PATH"
+fi

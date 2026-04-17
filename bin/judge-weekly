@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Build this week's weekly digest. Meant to be invoked by cron at end-of-week.
+# Optionally emails rohan.ahire@pattern.com via /usr/sbin/sendmail if available.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(dirname "$SCRIPT_DIR")"
+VENV_PY="$ROOT/.venv/bin/python"
+
+if [[ ! -x "$VENV_PY" ]]; then
+  echo "claude-judge: venv not found at $VENV_PY" >&2
+  exit 1
+fi
+
+# ISO week format: YYYY-Www  (e.g., 2026-W16)
+ISO_WEEK="${1:-$(date -u +"%G-W%V")}"
+OUTPUT_DIR="${CLAUDE_JUDGE_DATA:-$HOME/Documents/projects/claude-judge/data}"
+EMAIL_TO="${CLAUDE_JUDGE_EMAIL:-}"  # empty by default; set to enable email
+
+DIGEST_PATH=$("$VENV_PY" -c "
+from pathlib import Path
+from claude_judge.digest import build_weekly_digest
+from claude_judge.claude_cli_backend import ClaudeCLIBackend
+
+root = Path('$OUTPUT_DIR')
+llm = ClaudeCLIBackend(cache_dir=root / 'cache')
+digest = build_weekly_digest(root, iso_week='$ISO_WEEK', llm=llm)
+if digest:
+    print(digest.markdown_path)
+")
+
+if [[ -z "$DIGEST_PATH" ]]; then
+  echo "weekly digest: no sessions this week"
+  exit 0
+fi
+
+echo "weekly digest: $DIGEST_PATH"
+
+if [[ -n "$EMAIL_TO" ]] && command -v /usr/sbin/sendmail >/dev/null 2>&1; then
+  SUBJECT="claude-judge weekly digest — $ISO_WEEK"
+  {
+    echo "To: $EMAIL_TO"
+    echo "Subject: $SUBJECT"
+    echo "Content-Type: text/plain; charset=UTF-8"
+    echo ""
+    cat "$DIGEST_PATH"
+  } | /usr/sbin/sendmail -t || true
+  echo "emailed to $EMAIL_TO"
+fi

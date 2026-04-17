@@ -158,5 +158,85 @@
     "overall": 85.0,
     "tier_a_average": 8.5,
     "tier_b_average": null
+  },
+  {
+    "session_id": "a399aa5c-6303-4f89-9865-b01b70c5ec4f#2026-04-17T17:12:57.382000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:12:57.382000+00:00",
+    "ended_at": "2026-04-17T17:13:06.225000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "a8e5b9e1-db0e-4ef7-9aac-a657a3549128#2026-04-17T17:14:46.897000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:14:46.897000+00:00",
+    "ended_at": "2026-04-17T17:15:02.070000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "b0b4a792-b26d-484e-8ae0-5f7460b66616#2026-04-17T17:07:03.889000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:07:03.889000+00:00",
+    "ended_at": "2026-04-17T17:07:14.340000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "b71c7a22-3470-4290-b14b-4e0647275ad6#2026-04-17T17:15:51.902000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:15:51.902000+00:00",
+    "ended_at": "2026-04-17T17:16:07.174000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "c26d1ec2-22d9-45a3-9c90-5df6c8ae5af7#2026-04-17T17:13:16.801000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:13:16.801000+00:00",
+    "ended_at": "2026-04-17T17:13:24.135000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "c2dacc7a-26d6-464e-bed4-a7c8b9493342#2026-04-17T17:14:13.838000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:14:13.838000+00:00",
+    "ended_at": "2026-04-17T17:14:20.753000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "ce02bb18-2433-462c-926e-cd8db9d88efa#2026-04-17T17:12:35.737000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:12:35.737000+00:00",
+    "ended_at": "2026-04-17T17:12:46.777000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "e97f7145-54d7-4ff6-bfdf-aa1a60d4c712#2026-04-17T17:16:16.510000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:16:16.510000+00:00",
+    "ended_at": "2026-04-17T17:16:29.341000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
   }
 ]
