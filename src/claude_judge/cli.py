@@ -9,6 +9,11 @@ from pathlib import Path
 from claude_judge.claude_cli_backend import CallCapExceeded, ClaudeCLIBackend
 from claude_judge.git_correlator import GitCorrelator, GitWindow
 from claude_judge.intent_classifier import IntentClassifier
+from claude_judge.llm_scorers import (
+    LeverageFitScorer,
+    PromptQualityScorer,
+    SkillProgressionScorer,
+)
 from claude_judge.scorers import (
     OutcomeCorrelationScorer,
     ReviewDisciplineScorer,
@@ -61,14 +66,20 @@ def _score_session(
     session: SessionStats,
     git: GitWindow,
     intent: str,
+    tier_b: list,
 ) -> list[ScoreResult]:
     results: list[ScoreResult] = []
-    for r in [
+    tier_a = [
         ReviewDisciplineScorer().score(session, git=git),
         SecurityHygieneScorer().score(session, git=git),
         OutcomeCorrelationScorer().score(session, git=git, intent=intent),
         ReworkRateScorer().score(session, git=git),
-    ]:
+    ]
+    for r in tier_a:
+        if r is not None:
+            results.append(r)
+    for scorer in tier_b:
+        r = scorer.score(session, git=git, intent=intent)
         if r is not None:
             results.append(r)
     return results
@@ -111,9 +122,15 @@ def main(argv: list[str] | None = None) -> int:
     source = ClaudeCodeJSONLSource(root=scan_root)
 
     classifier: IntentClassifier | None = None
+    tier_b: list = []
     if not args.no_llm:
         backend = ClaudeCLIBackend(cache_dir=args.cache)
         classifier = IntentClassifier(backend=backend, cache_dir=args.cache)
+        tier_b = [
+            LeverageFitScorer(backend=backend, cache_dir=args.cache),
+            SkillProgressionScorer(backend=backend, cache_dir=args.cache),
+            PromptQualityScorer(backend=backend, cache_dir=args.cache),
+        ]
 
     any_printed = False
     llm_disabled_reason: str | None = None
@@ -129,7 +146,7 @@ def main(argv: list[str] | None = None) -> int:
             except CallCapExceeded as exc:
                 llm_disabled_reason = str(exc)
                 intent = "unknown"
-        scores = _score_session(session, git, intent)
+        scores = _score_session(session, git, intent, tier_b)
         print(_format_session(session, git, intent, scores))
         any_printed = True
 
