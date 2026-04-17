@@ -1,0 +1,6 @@
+{
+  "name": "claude-judge",
+  "version": "0.1.0",
+  "description": "Judges your Claude Code usage across review discipline, security hygiene, outcome correlation, rework rate, leverage fit, skill progression, and prompt quality.",
+  "author": "rohanahire"
+}
