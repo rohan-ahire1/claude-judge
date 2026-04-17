@@ -5,7 +5,8 @@ import argparse
 import os
 from pathlib import Path
 
-from claude_judge.transcript_source import ClaudeCodeJSONLSource, Session
+from claude_judge.summarizer import SessionStats
+from claude_judge.transcript_source import ClaudeCodeJSONLSource
 
 
 def _default_projects_root() -> Path:
@@ -19,14 +20,26 @@ def _project_dir_for_cwd(projects_root: Path, cwd: Path) -> Path:
     return projects_root / encoded
 
 
-def _format_verdict(session: Session) -> str:
+def _format_verdict(session: SessionStats) -> str:
     n = session.tool_call_count
-    short_id = session.session_id[:8] if session.session_id else "unknown"
+    short_id = session.session_id.split("#", 1)[0][:8] if session.session_id else "unknown"
+    dur_min = session.duration_seconds / 60
+    latencies = session.approval_latencies_ms
+    avg_latency = sum(latencies) / len(latencies) if latencies else 0.0
+    fast_approvals = sum(1 for ms in latencies if ms < 500)
+    header = (
+        f"Judge: {short_id}  "
+        f"dur={dur_min:>5.1f}m  "
+        f"tools={n:>3}  "
+        f"files={len(session.files_touched):>3}  "
+        f"avg_latency={avg_latency:>6.0f}ms  "
+        f"fast_approvals={fast_approvals}/{len(latencies)}"
+    )
     if n == 0:
-        return f"Judge: ghost session ({short_id}) — 0 tool calls. Burn."
+        return header + "  — ghost session. Burn."
     if n < 5:
-        return f"Judge: trivial session ({short_id}) — {n} tool calls. Skipping."
-    return f"Judge: session {short_id} — {n} tool calls. Real scoring coming soon."
+        return header + "  — trivial, skipping."
+    return header + "  — real scoring coming soon."
 
 
 def main(argv: list[str] | None = None) -> int:

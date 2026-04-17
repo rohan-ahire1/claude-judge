@@ -50,7 +50,7 @@ def test_reads_single_session_with_tool_call_count(tmp_path: Path) -> None:
 
     assert len(sessions) == 1
     session = sessions[0]
-    assert session.session_id == "sess-abc"
+    assert session.session_id.startswith("sess-abc#")
     assert session.tool_call_count == 3
     assert session.project_root.endswith("demo")
 
