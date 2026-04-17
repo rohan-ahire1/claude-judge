@@ -6,8 +6,16 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from claude_judge.claude_cli_backend import CallCapExceeded, ClaudeCLIBackend
 from claude_judge.git_correlator import GitCorrelator, GitWindow
-from claude_judge.scorers import TIER_A_SCORERS, ScoreResult
+from claude_judge.intent_classifier import IntentClassifier
+from claude_judge.scorers import (
+    OutcomeCorrelationScorer,
+    ReviewDisciplineScorer,
+    ReworkRateScorer,
+    ScoreResult,
+    SecurityHygieneScorer,
+)
 from claude_judge.summarizer import SessionStats
 from claude_judge.transcript_source import ClaudeCodeJSONLSource
 
@@ -16,13 +24,16 @@ def _default_projects_root() -> Path:
     return Path(os.path.expanduser("~/.claude/projects"))
 
 
+def _default_output_dir() -> Path:
+    return Path(os.path.expanduser("~/Documents/projects/claude-judge/data"))
+
+
 def _project_dir_for_cwd(projects_root: Path, cwd: Path) -> Path:
     encoded = str(cwd).replace("/", "-")
     return projects_root / encoded
 
 
 def _decode_project_dir(encoded: str) -> Path:
-    # Claude Code encodes /a/b/c as -a-b-c. Reverse heuristically.
     if not encoded.startswith("-"):
         return Path(encoded)
     return Path("/" + encoded.lstrip("-").replace("-", "/"))
@@ -46,22 +57,39 @@ def _correlate_git(session: SessionStats) -> GitWindow:
     return GitCorrelator(repo).window(since=since, until=until)
 
 
-def _format_session(session: SessionStats) -> str:
-    git = _correlate_git(session)
+def _score_session(
+    session: SessionStats,
+    git: GitWindow,
+    intent: str,
+) -> list[ScoreResult]:
+    results: list[ScoreResult] = []
+    for r in [
+        ReviewDisciplineScorer().score(session, git=git),
+        SecurityHygieneScorer().score(session, git=git),
+        OutcomeCorrelationScorer().score(session, git=git, intent=intent),
+        ReworkRateScorer().score(session, git=git),
+    ]:
+        if r is not None:
+            results.append(r)
+    return results
+
+
+def _format_session(
+    session: SessionStats,
+    git: GitWindow,
+    intent: str,
+    scores: list[ScoreResult],
+) -> str:
     dur_min = session.duration_seconds / 60
     header = (
         f"— {_short_id(session)}  "
+        f"intent={intent:<11}  "
         f"dur={dur_min:>5.1f}m  "
         f"tools={session.tool_call_count:>3}  "
-        f"files={len(session.files_touched):>3}  "
         f"edits={len(session.edit_paths):>3}  "
         f"commits={session.git_commit_count}+{len(git.commits)}ext  "
-        f"reverts={git.reverts_matched}  "
-        f"mode={session.permission_mode}"
+        f"reverts={git.reverts_matched}"
     )
-    scores: list[ScoreResult] = [
-        r for scorer in TIER_A_SCORERS for r in [scorer.score(session, git=git)] if r is not None
-    ]
     if not scores:
         return header + "\n    (no applicable scorers — trivial/ghost session)"
     lines = [header]
@@ -74,21 +102,39 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="judge")
     parser.add_argument("--root", type=Path, default=_default_projects_root())
     parser.add_argument("--cwd", type=Path, default=Path.cwd())
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Judge every session under --root (default: only current cwd)",
-    )
+    parser.add_argument("--cache", type=Path, default=_default_output_dir() / "cache")
+    parser.add_argument("--no-llm", action="store_true", help="Disable Haiku intent classification")
+    parser.add_argument("--all", action="store_true")
     args = parser.parse_args(argv)
 
     scan_root = args.root if args.all else _project_dir_for_cwd(args.root, args.cwd)
     source = ClaudeCodeJSONLSource(root=scan_root)
 
+    classifier: IntentClassifier | None = None
+    if not args.no_llm:
+        backend = ClaudeCLIBackend(cache_dir=args.cache)
+        classifier = IntentClassifier(backend=backend, cache_dir=args.cache)
+
     any_printed = False
+    llm_disabled_reason: str | None = None
     for session in source.list_sessions():
-        print(_format_session(session))
+        git = _correlate_git(session)
+        if classifier is None or session.tool_call_count < 5:
+            intent = "unknown"
+        elif llm_disabled_reason is not None:
+            intent = "unknown"
+        else:
+            try:
+                intent = classifier.classify(session)
+            except CallCapExceeded as exc:
+                llm_disabled_reason = str(exc)
+                intent = "unknown"
+        scores = _score_session(session, git, intent)
+        print(_format_session(session, git, intent, scores))
         any_printed = True
 
+    if llm_disabled_reason:
+        print(f"\n(LLM note: {llm_disabled_reason})")
     if not any_printed:
         print("Judge: no sessions found for this project yet.")
     return 0

@@ -151,3 +151,37 @@ def test_rework_rate_penalizes_reverts_in_window() -> None:
     # Clean in-session rework (score=10 baseline), but 2 reverts drop it.
     assert result.score < 10
     assert "revert" in result.rationale.lower()
+
+
+# --- Intent-aware Outcome Correlation ---
+
+
+def test_outcome_correlation_neutralizes_on_planning_intent() -> None:
+    stats = _stats(edit_paths=["/a.py", "/b.py", "/c.py"], git_commit_count=0)
+    result = OutcomeCorrelationScorer().score(stats, intent="planning")
+    assert result is not None
+    assert result.score >= 7  # planning session gets neutral, not penalized
+    assert "planning" in result.rationale.lower()
+
+
+def test_outcome_correlation_neutralizes_on_learning_and_exploration() -> None:
+    stats = _stats(edit_paths=["/a.py"] * 5, git_commit_count=0)
+    for intent in ("learning", "exploration", "ops"):
+        result = OutcomeCorrelationScorer().score(stats, intent=intent)
+        assert result is not None
+        assert result.score >= 7, f"{intent} should be neutral, got {result.score}"
+
+
+def test_outcome_correlation_still_penalizes_coding_intent_with_no_commits() -> None:
+    stats = _stats(edit_paths=["/a.py"] * 5, git_commit_count=0)
+    result = OutcomeCorrelationScorer().score(stats, intent="coding")
+    assert result is not None
+    assert result.score <= 4
+
+
+def test_outcome_correlation_unknown_intent_behaves_like_pre_slice_6() -> None:
+    stats = _stats(edit_paths=["/a.py"] * 5, git_commit_count=0)
+    result = OutcomeCorrelationScorer().score(stats, intent="unknown")
+    assert result is not None
+    # Same behavior as omitting intent entirely — deterministic default.
+    assert result.score <= 4

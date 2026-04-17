@@ -111,20 +111,31 @@ class OutcomeCorrelationScorer:
     """
 
     name = "outcome_correlation"
+    _NEUTRAL_INTENTS = frozenset({"planning", "learning", "exploration", "ops"})
 
-    def score(self, stats: SessionStats, git: GitWindow | None = None) -> ScoreResult | None:
+    def score(
+        self,
+        stats: SessionStats,
+        git: GitWindow | None = None,
+        intent: str | None = None,
+    ) -> ScoreResult | None:
         edits = len(stats.edit_paths)
         in_session_commits = stats.git_commit_count
         external_commits = len(git.commits) if git else 0
-        # Use the max so the user gets credit whether they committed via Bash
-        # tool call or via terminal/UI outside the Claude Code session.
         commits = max(in_session_commits, external_commits)
+
+        if intent in self._NEUTRAL_INTENTS:
+            return ScoreResult(
+                name=self.name,
+                score=7.5,
+                rationale=f"{intent.capitalize()} session — outcome correlation not applicable.",
+            )
 
         if edits == 0:
             return ScoreResult(
                 name=self.name,
                 score=7.0,
-                rationale="No edits this session — neutral (intent unknown without classifier).",
+                rationale="No edits — reading/exploring; neutral.",
             )
 
         if commits == 0:
