@@ -1,0 +1,162 @@
+[
+  {
+    "session_id": "08e38e32-24ac-4e8c-8e62-cf993f8e632b#2026-04-15T06:19:50.408000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-trendvision",
+    "started_at": "2026-04-15T06:19:50.408000+00:00",
+    "ended_at": "2026-04-15T07:00:09.001000+00:00",
+    "intent": "exploration",
+    "overall": 73.6,
+    "tier_a_average": 9.0,
+    "tier_b_average": 4.0
+  },
+  {
+    "session_id": "237a417b-f394-40c6-89f4-182b5aeedff3#2026-04-15T05:23:44.487000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-trendvision",
+    "started_at": "2026-04-15T05:23:44.487000+00:00",
+    "ended_at": "2026-04-15T06:04:45.842000+00:00",
+    "intent": "planning",
+    "overall": 61.6,
+    "tier_a_average": 6.4,
+    "tier_b_average": 5.7
+  },
+  {
+    "session_id": "260097e3-bf14-466f-8ad4-c93d3fbaf382#2026-04-15T07:03:16.346000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-trendvision",
+    "started_at": "2026-04-15T07:03:16.346000+00:00",
+    "ended_at": "2026-04-15T07:05:42.871000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "4999677d-facc-4a37-a74c-fc9fa697afc6#2026-04-15T07:06:59.558000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-trendvision",
+    "started_at": "2026-04-15T07:06:59.558000+00:00",
+    "ended_at": "2026-04-15T07:07:24.764000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "9023e637-d92c-47b1-991e-2e2c28617914#2026-04-15T04:51:50.319000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-trendvision",
+    "started_at": "2026-04-15T04:51:50.319000+00:00",
+    "ended_at": "2026-04-15T05:23:32.621000+00:00",
+    "intent": "planning",
+    "overall": 64.4,
+    "tier_a_average": 6.7,
+    "tier_b_average": 5.7
+  },
+  {
+    "session_id": "b8d3d4b0-9306-4f21-9748-f0bebf055514#2026-04-15T05:29:21.358000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-trendvision",
+    "started_at": "2026-04-15T05:29:21.358000+00:00",
+    "ended_at": "2026-04-15T06:18:48.797000+00:00",
+    "intent": "planning",
+    "overall": 74.0,
+    "tier_a_average": 8.3,
+    "tier_b_average": 5.7
+  },
+  {
+    "session_id": "e4a8e328-d7b4-4956-b55c-717e123acf7d#2026-04-15T04:57:08.949000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-trendvision",
+    "started_at": "2026-04-15T04:57:08.949000+00:00",
+    "ended_at": "2026-04-15T04:57:28.718000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "15178658-e671-4555-b4c8-1b478039afd0#2026-04-17T17:07:22.185000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:07:22.185000+00:00",
+    "ended_at": "2026-04-17T17:07:27.726000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "2f5a117e-6a55-48a8-a791-54628078ccb4#2026-04-17T17:07:38.760000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:07:38.760000+00:00",
+    "ended_at": "2026-04-17T17:07:48.147000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "3078095f-0ac2-45dc-ae7e-e83d1fb25c41#2026-04-17T17:15:11.937000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:15:11.937000+00:00",
+    "ended_at": "2026-04-17T17:15:18.993000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "48f266b7-dece-4cf5-b52a-47e64806baca#2026-04-17T17:13:54.356000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:13:54.356000+00:00",
+    "ended_at": "2026-04-17T17:14:05.313000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "64b7d670-7fba-4cee-9149-2af2e19ee1f0#2026-04-17T17:15:29.642000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:15:29.642000+00:00",
+    "ended_at": "2026-04-17T17:15:42.318000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "79e17999-4aa7-4364-b265-a24682c357d0#2026-04-17T17:07:57.132000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:07:57.132000+00:00",
+    "ended_at": "2026-04-17T17:08:02.625000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "7ebd25d8-05a5-4410-a816-a0318ca8331c#2026-04-17T17:29:00.904000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:29:00.904000+00:00",
+    "ended_at": "2026-04-17T17:29:04.253000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "8b9d4658-c98c-463e-af3b-21946be3d13c#2026-04-17T17:13:32.359000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:13:32.359000+00:00",
+    "ended_at": "2026-04-17T17:13:46.155000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  },
+  {
+    "session_id": "8e415d78-b7c2-4efa-9de9-1e08add01aa0#2026-04-17T17:14:30.587000+00:00",
+    "project_root": "-Users-rohanahire-Documents-projects-claude-judge",
+    "started_at": "2026-04-17T17:14:30.587000+00:00",
+    "ended_at": "2026-04-17T17:14:40.093000+00:00",
+    "intent": "unknown",
+    "overall": 85.0,
+    "tier_a_average": 8.5,
+    "tier_b_average": null
+  }
+]
