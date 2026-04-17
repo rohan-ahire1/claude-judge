@@ -5,6 +5,7 @@ import argparse
 import os
 from pathlib import Path
 
+from claude_judge.scorers import TIER_A_SCORERS, ScoreResult
 from claude_judge.summarizer import SessionStats
 from claude_judge.transcript_source import ClaudeCodeJSONLSource
 
@@ -14,32 +15,34 @@ def _default_projects_root() -> Path:
 
 
 def _project_dir_for_cwd(projects_root: Path, cwd: Path) -> Path:
-    # Claude Code encodes the absolute cwd as a directory name by replacing
-    # path separators with dashes. /Users/rohan/foo -> -Users-rohan-foo
     encoded = str(cwd).replace("/", "-")
     return projects_root / encoded
 
 
-def _format_verdict(session: SessionStats) -> str:
-    n = session.tool_call_count
-    short_id = session.session_id.split("#", 1)[0][:8] if session.session_id else "unknown"
+def _short_id(session: SessionStats) -> str:
+    return (session.session_id.split("#", 1)[0] or "unknown")[:8]
+
+
+def _format_session(session: SessionStats) -> str:
     dur_min = session.duration_seconds / 60
-    latencies = session.approval_latencies_ms
-    avg_latency = sum(latencies) / len(latencies) if latencies else 0.0
-    fast_approvals = sum(1 for ms in latencies if ms < 500)
     header = (
-        f"Judge: {short_id}  "
+        f"— {_short_id(session)}  "
         f"dur={dur_min:>5.1f}m  "
-        f"tools={n:>3}  "
+        f"tools={session.tool_call_count:>3}  "
         f"files={len(session.files_touched):>3}  "
-        f"avg_latency={avg_latency:>6.0f}ms  "
-        f"fast_approvals={fast_approvals}/{len(latencies)}"
+        f"edits={len(session.edit_paths):>3}  "
+        f"commits={session.git_commit_count}  "
+        f"mode={session.permission_mode}"
     )
-    if n == 0:
-        return header + "  — ghost session. Burn."
-    if n < 5:
-        return header + "  — trivial, skipping."
-    return header + "  — real scoring coming soon."
+    scores: list[ScoreResult] = [
+        r for scorer in TIER_A_SCORERS for r in [scorer.score(session)] if r is not None
+    ]
+    if not scores:
+        return header + "\n    (no applicable scorers — trivial/ghost session)"
+    lines = [header]
+    for r in scores:
+        lines.append(f"    {r.name:<22} {r.score:>4.1f}/10  {r.rationale}")
+    return "\n".join(lines)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -58,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
 
     any_printed = False
     for session in source.list_sessions():
-        print(_format_verdict(session))
+        print(_format_session(session))
         any_printed = True
 
     if not any_printed:
