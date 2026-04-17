@@ -3,8 +3,10 @@ from __future__ import annotations
 
 import argparse
 import os
+from datetime import datetime
 from pathlib import Path
 
+from claude_judge.git_correlator import GitCorrelator, GitWindow
 from claude_judge.scorers import TIER_A_SCORERS, ScoreResult
 from claude_judge.summarizer import SessionStats
 from claude_judge.transcript_source import ClaudeCodeJSONLSource
@@ -19,11 +21,33 @@ def _project_dir_for_cwd(projects_root: Path, cwd: Path) -> Path:
     return projects_root / encoded
 
 
+def _decode_project_dir(encoded: str) -> Path:
+    # Claude Code encodes /a/b/c as -a-b-c. Reverse heuristically.
+    if not encoded.startswith("-"):
+        return Path(encoded)
+    return Path("/" + encoded.lstrip("-").replace("-", "/"))
+
+
 def _short_id(session: SessionStats) -> str:
     return (session.session_id.split("#", 1)[0] or "unknown")[:8]
 
 
+def _correlate_git(session: SessionStats) -> GitWindow:
+    if not session.started_at or not session.ended_at:
+        return GitWindow()
+    try:
+        since = datetime.fromisoformat(session.started_at)
+        until = datetime.fromisoformat(session.ended_at)
+    except ValueError:
+        return GitWindow()
+    repo = _decode_project_dir(session.project_root)
+    if not repo.exists():
+        return GitWindow()
+    return GitCorrelator(repo).window(since=since, until=until)
+
+
 def _format_session(session: SessionStats) -> str:
+    git = _correlate_git(session)
     dur_min = session.duration_seconds / 60
     header = (
         f"— {_short_id(session)}  "
@@ -31,11 +55,12 @@ def _format_session(session: SessionStats) -> str:
         f"tools={session.tool_call_count:>3}  "
         f"files={len(session.files_touched):>3}  "
         f"edits={len(session.edit_paths):>3}  "
-        f"commits={session.git_commit_count}  "
+        f"commits={session.git_commit_count}+{len(git.commits)}ext  "
+        f"reverts={git.reverts_matched}  "
         f"mode={session.permission_mode}"
     )
     scores: list[ScoreResult] = [
-        r for scorer in TIER_A_SCORERS for r in [scorer.score(session)] if r is not None
+        r for scorer in TIER_A_SCORERS for r in [scorer.score(session, git=git)] if r is not None
     ]
     if not scores:
         return header + "\n    (no applicable scorers — trivial/ghost session)"

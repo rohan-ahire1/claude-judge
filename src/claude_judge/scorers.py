@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 
+from claude_judge.git_correlator import GitWindow
 from claude_judge.summarizer import SessionStats
 
 # Weight of each red flag label in the Security Hygiene score (out of 10).
@@ -51,7 +52,7 @@ class ReviewDisciplineScorer:
     name = "review_discipline"
     _TRIVIAL_THRESHOLD = 5
 
-    def score(self, stats: SessionStats) -> ScoreResult | None:
+    def score(self, stats: SessionStats, git: GitWindow | None = None) -> ScoreResult | None:
         if stats.tool_call_count < self._TRIVIAL_THRESHOLD:
             return None
         latencies = stats.approval_latencies_ms
@@ -89,7 +90,7 @@ class SecurityHygieneScorer:
 
     name = "security_hygiene"
 
-    def score(self, stats: SessionStats) -> ScoreResult | None:
+    def score(self, stats: SessionStats, git: GitWindow | None = None) -> ScoreResult | None:
         flags = stats.security_red_flags
         if not flags:
             return ScoreResult(name=self.name, score=10.0, rationale="Clean.")
@@ -111,12 +112,15 @@ class OutcomeCorrelationScorer:
 
     name = "outcome_correlation"
 
-    def score(self, stats: SessionStats) -> ScoreResult | None:
+    def score(self, stats: SessionStats, git: GitWindow | None = None) -> ScoreResult | None:
         edits = len(stats.edit_paths)
-        commits = stats.git_commit_count
+        in_session_commits = stats.git_commit_count
+        external_commits = len(git.commits) if git else 0
+        # Use the max so the user gets credit whether they committed via Bash
+        # tool call or via terminal/UI outside the Claude Code session.
+        commits = max(in_session_commits, external_commits)
 
         if edits == 0:
-            # Reading/exploring session — neutral.
             return ScoreResult(
                 name=self.name,
                 score=7.0,
@@ -127,15 +131,16 @@ class OutcomeCorrelationScorer:
             return ScoreResult(
                 name=self.name,
                 score=3.0,
-                rationale=f"{edits} edits but zero commits detected in-session. Orphan work risk.",
+                rationale=f"{edits} edits but zero commits in window. Orphan work risk.",
             )
 
-        ratio = min(commits / max(1, edits / 3), 1.0)  # ~1 commit per 3 edits is healthy
+        ratio = min(commits / max(1, edits / 3), 1.0)
         score = 6.0 + 4.0 * ratio
+        source = "in-session" if in_session_commits >= external_commits else "window"
         return ScoreResult(
             name=self.name,
             score=round(score, 1),
-            rationale=f"{edits} edits ↔ {commits} commits in-session.",
+            rationale=f"{edits} edits ↔ {commits} commits ({source}).",
         )
 
 
@@ -147,7 +152,7 @@ class ReworkRateScorer:
 
     name = "rework_rate"
 
-    def score(self, stats: SessionStats) -> ScoreResult | None:
+    def score(self, stats: SessionStats, git: GitWindow | None = None) -> ScoreResult | None:
         if not stats.edit_paths:
             return None
 
@@ -155,16 +160,18 @@ class ReworkRateScorer:
         unique_files = len(counts)
         multi_edited = sum(1 for _, c in counts.items() if c > 1)
         rework_ratio = multi_edited / unique_files if unique_files else 0.0
+        base = 10.0 * (1.0 - rework_ratio)
 
-        score = round(10.0 * (1.0 - rework_ratio), 1)
-        return ScoreResult(
-            name=self.name,
-            score=score,
-            rationale=(
-                f"{multi_edited}/{unique_files} files edited more than once "
-                f"({int(rework_ratio * 100)}% rework)."
-            ),
-        )
+        reverts = git.reverts_matched if git else 0
+        revert_penalty = min(reverts * 2.0, base)  # up to -2 per revert, can't go below 0
+        score = max(0.0, round(base - revert_penalty, 1))
+
+        parts = [
+            f"{multi_edited}/{unique_files} files edited >1x ({int(rework_ratio * 100)}% rework)"
+        ]
+        if reverts:
+            parts.append(f"{reverts} revert commit(s) in window")
+        return ScoreResult(name=self.name, score=score, rationale="; ".join(parts) + ".")
 
 
 TIER_A_SCORERS = (

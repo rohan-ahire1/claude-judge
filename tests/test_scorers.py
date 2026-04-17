@@ -1,3 +1,4 @@
+from claude_judge.git_correlator import GitCommit, GitWindow
 from claude_judge.scorers import (
     OutcomeCorrelationScorer,
     ReviewDisciplineScorer,
@@ -120,3 +121,33 @@ def test_rework_rate_low_when_files_repeatedly_edited() -> None:
 def test_rework_rate_skips_when_no_edits() -> None:
     stats = _stats(edit_paths=[])
     assert ReworkRateScorer().score(stats) is None
+
+
+# --- Tier A scorers with GitWindow context ---
+
+
+def _window(commits: int = 0, reverts: int = 0) -> GitWindow:
+    from datetime import datetime, timezone
+    sample_commits = [
+        GitCommit(sha=f"sha{i}", timestamp=datetime(2026, 4, 17, 10, i, tzinfo=timezone.utc), subject=f"c{i}")
+        for i in range(commits)
+    ]
+    return GitWindow(commits=sample_commits, reverts_matched=reverts)
+
+
+def test_outcome_correlation_uses_external_commits_when_in_session_is_zero() -> None:
+    # User edited 5 files, did NOT run `git commit` via Bash, but had 2 commits
+    # in the session window (e.g., committed via `/commit` or terminal outside).
+    stats = _stats(edit_paths=["/a.py"] * 5, git_commit_count=0)
+    result = OutcomeCorrelationScorer().score(stats, git=_window(commits=2))
+    assert result is not None
+    assert result.score >= 8
+
+
+def test_rework_rate_penalizes_reverts_in_window() -> None:
+    stats = _stats(edit_paths=["/a.py", "/b.py", "/c.py"])  # no in-session rework
+    result = ReworkRateScorer().score(stats, git=_window(commits=3, reverts=2))
+    assert result is not None
+    # Clean in-session rework (score=10 baseline), but 2 reverts drop it.
+    assert result.score < 10
+    assert "revert" in result.rationale.lower()
