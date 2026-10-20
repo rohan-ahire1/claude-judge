@@ -5,3 +5,6 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+
+# Generated reports from your own usage; never commit
+data/
